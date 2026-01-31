@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Check Review{% endblock %}
+{% block content %}
+  <header class="header">
+    <h1 class="logo">Review Sentiment</h1>
+    <p class="tagline">Paste a review. We’ll tell you if it’s positive or negative.</p>
+  </header>
+
+  <section class="card">
+    <form id="review-form" class="form" action="/predict" method="post">
+      <label for="review" class="label">Your review</label>
+      <textarea
+        id="review"
+        name="review"
+        class="textarea"
+        rows="5"
+        placeholder="e.g. This movie was incredible! The acting and story were both outstanding..."
+        required
+      ></textarea>
+      <button type="submit" class="btn" id="submit-btn">
+        <span class="btn-text">Check sentiment</span>
+        <span class="btn-loading" aria-hidden="true">Analyzing…</span>
+      </button>
+    </form>
+
+    <div id="result" class="result" aria-live="polite" hidden>
+      <div class="result-badge" id="result-badge"></div>
+      <p class="result-review" id="result-review"></p>
+    </div>
+
+    <div id="error" class="error" aria-live="assertive" hidden></div>
+  </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.getElementById('review-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const review = form.review.value.trim();
+    const resultEl = document.getElementById('result');
+    const errorEl = document.getElementById('error');
+    const badgeEl = document.getElementById('result-badge');
+    const reviewEl = document.getElementById('result-review');
+    const btn = document.getElementById('submit-btn');
+
+    resultEl.hidden = true;
+    errorEl.hidden = true;
+    btn.classList.add('loading');
+
+    try {
+      const res = await fetch('/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ review })
+      });
+      const data = await res.json().catch(function() { return {}; });
+
+      if (!res.ok) {
+        errorEl.textContent = data.error || 'Something went wrong.';
+        errorEl.hidden = false;
+        return;
+      }
+
+      badgeEl.textContent = data.sentiment;
+      badgeEl.className = 'result-badge result-badge--' + data.sentiment;
+      reviewEl.textContent = data.review.length > 200 ? data.review.slice(0, 200) + '…' : data.review;
+      resultEl.hidden = false;
+    } catch (err) {
+      errorEl.textContent = 'Network error. Please try again.';
+      errorEl.hidden = false;
+    } finally {
+      btn.classList.remove('loading');
+    }
+  });
+</script>
+{% endblock %}
